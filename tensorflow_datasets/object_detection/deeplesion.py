@@ -59,18 +59,42 @@ _CITATION = """\
 
 class Deeplesion(tfds.core.GeneratorBasedBuilder):
   """DeepLesion dataset builder.
+  
+  This dataset contains all slices and almost all annotations information provided by NIH deeplesion dataset.
+  The only explicately removed column is `Coarse_lesion_type` because it only be noted in validation and test split. 
+  And it might not accurate. Values of `Patient_index`, `Study_index`, `Series_ID` and `Train_Val_Test` are not explicately 
+  included in this dataset because they are contained implicately. `Patient_index`, `Study_index` and `Series_ID` are 
+  contained in `File_name`, which is recorded in the `key_image/name` feature. `Train_Val_Test` is excluded because 
+  this dataset is splited using this columns.
+  
+  Data and annotaions are grouped as examples by annotated lesion slices. Each example contains a unique "key_image/name", 
+  a "key_index", a "possibly_noisy", a "slice_range", a "spacing_mm_px", a "image_size", a "patient_gender" and a "patient_age". 
+  the "key_index" is the `Key_slice_index` but rebased from zero. Each example might contains multiple lesion features, which are 
+  "bboxs", "measurement_coord", "lesion_diameters_pixel", "normalized_lesion_loc" and "dicom_windows". Each example have a 
+  sequence of images, which come from continuous range of a CT series.  
   """
 
-  VERSION = tfds.core.Version('0.1.0')
+  VERSION = tfds.core.Version('2.0.0')
 
   def _info(self):
     return tfds.core.DatasetInfo(
         builder=self,
         description=_DESCRIPTION,
         features=tfds.features.FeaturesDict({
-            "image/name":tfds.features.Text(),
-            "image":tfds.features.Image(shape=(None, None, 1), dtype=tf.uint16, encoding_format='png'),
-            "bbox":tfds.features.Sequence(tfds.features.BBoxFeature())
+            "key_image/name":tfds.features.Text(),
+            "images":tfds.features.Sequence(tfds.features.Image(shape=(None, None, 1), dtype=tf.uint16, encoding_format='png')),
+            "bboxs":tfds.features.Sequence(tfds.features.BBoxFeature()),
+            "key_index":tfds.features.Tensor(shape=(),dtype=tf.int32),
+            "measurement_coord":tfds.features.Sequence(tfds.features.Tensor(shape=(8,),dtype=tf.float32)),
+            "lesion_diameters_pixel":tfds.features.Sequence(tfds.features.Tensor(shape=(2,),dtype=tf.float32)),
+            "normalized_lesion_loc":tfds.features.Sequence(tfds.features.Tensor(shape=(3,),dtype=tf.float32)),
+            "possibly_noisy":tfds.features.Tensor(shape=(),dtype=tf.int32),
+            "slice_range":tfds.features.Tensor(shape=(2,),dtype=tf.int32),
+            "spacing_mm_px":tfds.features.Tensor(shape=(3,),dtype=tf.float32),
+            "image_size":tfds.features.Tensor(shape=(2,),dtype=tf.int32),
+            "dicom_windows":tfds.features.Sequence(tfds.features.Tensor(shape=(2,),dtype=tf.int32)),
+            "patient_gender":tfds.features.Tensor(shape=(),dtype=tf.int32),
+            "patient_age":tfds.features.Tensor(shape=(),dtype=tf.int32),
         }),
         homepage=_URL,
         citation=_CITATION,
@@ -176,24 +200,35 @@ class Deeplesion(tfds.core.GeneratorBasedBuilder):
 
   def _generate_examples(self, lut, split):
     """Returns examples
-    :type lut: dict, lookup dictionary to lookup whole paths of series_folder
+    :type lut: dict, lookup dictionary to lookup paths of CT series folders
     :type split: dataframe, annotation information associated to images
     :rtype: yield idx, example
     """
     for idx, value in enumerate(split.values):
-      file_name, bboxs, size, sp = value
+      file_name, bboxs, size, ks_idx, m_coords, diameters, n_loc, p_noisy, slice_range, spacing, dicom_windows, p_gender, p_age, sp = value
       record = {
-          "image/name": file_name,
-          "image": _lookup_image_path(lut, file_name),
-          "bbox": _format_bboxs(bboxs, size)
+          "key_image/name": file_name,
+          "images": _lookup_image_paths(lut, file_name, slice_range),
+          "bboxs": _format_bboxs(bboxs, size),
+          "key_index": ks_idx - [int(x) for x in slice_range.split(',')][0],
+          "measurement_coord": _format_values(m_coords, 8, float),
+          "lesion_diameters_pixel": _format_values(diameters, 2, float),
+          "normalized_lesion_loc": _format_values(n_loc, 3, float),
+          "possibly_noisy": int(p_noisy),
+          "slice_range": [int(x) for x in slice_range.split(',')],
+          "spacing_mm_px": [float(x) for x in spacing.split(',')],
+          "image_size": [int(x) for x in size.split(',')],
+          "dicom_windows": _format_values(dicom_windows, 2, int),
+          "patient_gender": int(p_gender),
+          "patient_age": int(p_age),
       }
       yield idx, record
 
-    
+       
 def _build_lut(paths):
-    """Returns lookup dictionary to lookup whole path of series_folders using extracted paths
-    :type paths: dict, {<zipfn>:<unzip_path>}
-    :rtype: dict, {<series_folder>:<unzip_path>/Images_png/<series_folder>}
+    """Returns lookup dictionary to lookup paths of series_folders using unzipped file paths
+    :type paths: dict, {<zipfile>:<unzipped_path>}
+    :rtype: dict, {<series_folder>:<unzipped_path>/Images_png/<series_folder>}
     """
     lut = {}
     for _, v in paths.items():
@@ -202,22 +237,24 @@ def _build_lut(paths):
     return lut
         
 
-def _lookup_image_path(lut, file_name):
-    """Returns whole path of an image
+def _lookup_image_paths(lut, file_name, slice_range):
+    """Returns paths of all slices of a CT series
     :type lut: dict, lookup dictionary
-    :file_name: string, image name recorded in the annotation file
+    :file_name: string, formated as "PatientID_StudyID_SeriesID_KeySliceID.png", value of `File_name` column within the annotation file
+    :slice_range: string, range of CT slices provided within the CT series
+    :rtype: list of image paths
     """
-    slice_fn = file_name.split('_')[-1]
     fd = '_'.join(file_name.split('_')[:-1])
+    s_range = [int(x) for x in slice_range.split(',')]
     
-    return os.path.join(lut[fd], slice_fn)
+    return [os.path.join(lut[fd], '%03d.png' % s) for s in range(s_range[0], s_range[1]+1)]
     
     
 def _format_bboxs(bboxs, size):
-    """Return bbox feature
+    """Returns sequence of bbox feature
     :type bboxs: string, "xmin,ymin,xmax,ymax"
     :type size: string, "height,width"
-    :rtype: tfds.features.BBox
+    :rtype: list of tfds.features.BBox
     """
     size = [float(x) for x in size.split(',')]
     if len(size) != 2 or size[0] != size[1]:
@@ -235,23 +272,66 @@ def _format_bboxs(bboxs, size):
         bbox_list.append(tfds.features.BBox(ymin=ymin, xmin=xmin, ymax=ymax, xmax=xmax))
     
     return bbox_list
+
+
+def _format_values(val, n, e_type):
+    """Returns a feature formated value
+    :type val: string, "num1,num2,num3,..."
+    :type n: num of elems within each tuple
+    :type e_type: type of elems within each tuple
+    :rtype: list of tuples
+    """
+    def _divide_chunks(l, n):
+        """Yield successive n-sized chunks from l.
+        """
+        for i in range(0, len(l), n):  
+            yield tuple(l[i:i + n])
+            
+    lst = [e_type(float(x)) for x in val.split(',')]
+    return list(_divide_chunks(lst, n))
     
     
 def _ann_parser(ann_path):
-    """parsers the annotation file and returns the splits in dataframes
+    """Returns three data splits for train, validation and test
+    
+    this parser read the annotation file, group and aggregate annotaions by `File_name`, and returns the splits using `Train_Val_Test`
+    
     :type ann_path: string, path of the annotation file
     :rtype: tuple with 3 dataframes: for train, validation and test.
     """
     pd = tfds.core.lazy_imports.pandas
     with tf.io.gfile.GFile(ann_path) as csv_f:
+        # read file
         df = pd.read_csv(csv_f)
-        df_t = df[['File_name', 'Bounding_boxes', 'Image_size', 'Train_Val_Test']]
+        # select columns
+        df_t = df[['File_name', 'Bounding_boxes', 'Image_size', \
+                   'Key_slice_index', 'Measurement_coordinates', 'Lesion_diameters_Pixel_', \
+                   'Normalized_lesion_location', 'Possibly_noisy', 'Slice_range', \
+                   'Spacing_mm_px_', 'DICOM_windows', 'Patient_gender', \
+                   'Patient_age', 'Train_Val_Test']]
+        df_t = df_t.copy()
+        # clean data
+        df_t.fillna(-1)
+        df_t.Patient_gender.replace(['M', 'F'], [1, 0], inplace=True)
+        # create rules for aggregation
         concat = lambda a: ", ".join(a) 
         d = {'Bounding_boxes': concat,
-             'Image_size':'first', 
-             'Train_Val_Test':'first'}
+             'Image_size': 'first',
+             'Key_slice_index': 'first',
+             'Measurement_coordinates': concat,
+             'Lesion_diameters_Pixel_': concat,
+             'Normalized_lesion_location': concat,
+             'Possibly_noisy': 'first',
+             'Slice_range': 'first',
+             'Spacing_mm_px_': 'first',
+             'DICOM_windows': concat,
+             'Patient_gender': 'first',
+             'Patient_age': 'first',
+             'Train_Val_Test': 'first',
+        }
+        # group and aggregate
         df_new = df_t.groupby('File_name', as_index=False).aggregate(d).reindex(columns=df_t.columns)
-            
+        # split
         df_train = df_new[df_new['Train_Val_Test']==1]
         df_val = df_new[df_new['Train_Val_Test']==2]
         df_test = df_new[df_new['Train_Val_Test']==3]

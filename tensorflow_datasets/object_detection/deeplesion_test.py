@@ -26,9 +26,9 @@ from tensorflow_datasets.object_detection import deeplesion
 class DeeplesionTest(testing.DatasetBuilderTestCase):
   DATASET_CLASS = deeplesion.Deeplesion
   SPLITS = {
-      "train": 5,
-      "validation": 5,
-      "test":5,
+      "train": 1,
+      "validation": 1,
+      "test":1,
   }
   DL_EXTRACT_RESULT = {
       "zipfile01": "zipfile01",  # Relative to fake_examples/my_dataset dir.
