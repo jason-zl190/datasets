@@ -205,7 +205,7 @@ class Deeplesion(tfds.core.GeneratorBasedBuilder):
     :rtype: yield idx, example
     """
     for idx, value in enumerate(split.values):
-      file_name, bboxs, size, ks_idx, m_coords, diameters, n_loc, p_noisy, slice_range, spacing, dicom_windows, p_gender, p_age, sp = value
+      file_name, bboxs, size, ks_idx, m_coords, diameters, n_loc, p_noisy, slice_range, spacing, dicom_windows, p_gender, p_age, _ = value
       record = {
           "key_image/name": file_name,
           "images": _lookup_image_paths(lut, file_name, slice_range),
@@ -311,7 +311,7 @@ def _ann_parser(ann_path):
                    'Patient_age', 'Train_Val_Test']]
         df_t = df_t.copy()
         # clean data
-        df_t.fillna(-1)
+        df_t.fillna(-1, inplace=True)
         df_t.Patient_gender.replace(['M', 'F'], [1, 0], inplace=True)
         # create rules for aggregation
         concat = lambda a: ", ".join(a) 
