@@ -57,6 +57,7 @@ from tensorflow_datasets.image_classification.malaria import Malaria
 from tensorflow_datasets.image_classification.mnist import EMNIST
 from tensorflow_datasets.image_classification.mnist import FashionMNIST
 from tensorflow_datasets.image_classification.mnist import KMNIST
+from tensorflow_datasets.image_classification.mimic_cxr import MimicCxr
 from tensorflow_datasets.image_classification.mnist import MNIST
 from tensorflow_datasets.image_classification.mnist_corrupted import MNISTCorrupted
 from tensorflow_datasets.image_classification.omniglot import Omniglot
