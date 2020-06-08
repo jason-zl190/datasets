@@ -1,1 +1,0 @@
-TODO(mimic_cxr): Add fake data in this directory
