@@ -163,7 +163,7 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
             tmpFile = io.BytesIO(image_bytes)
             image_array = pydicom.dcmread(tmpFile).pixel_array
             image = Image.fromarray(image_array, 'I;16')
-            image = image.resize((2544, 3056))
+            image = image.resize((2544, 3056), resample=Image.NEAREST)
             tmpFile = io.BytesIO()
             image.save(tmpFile, format='PNG')
             tmpFile.seek(0)

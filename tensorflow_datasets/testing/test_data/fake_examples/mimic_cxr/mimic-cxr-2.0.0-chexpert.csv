@@ -1,0 +1,8 @@
+subject_id,study_id,Atelectasis,Cardiomegaly,Consolidation,Edema,Enlarged Cardiomediastinum,Fracture,Lung Lesion,Lung Opacity,No Finding,Pleural Effusion,Pleural Other,Pneumonia,Pneumothorax,Support Devices
+10000032,50414267,,,,,,,,,1.0,,,,,
+10000032,53189527,,,,,,,,,1.0,,,,,
+10000032,53911762,,,,,,,,,1.0,,,,,
+10000032,56699142,,,,,,,,,1.0,,,,,
+10000764,57375967,,,1.0,,,,,,,,,-1.0,,
+10000898,50771383,,,,,,,,,1.0,,,,,
+10000898,54205396,,,,,,,,,1.0,,,,,
