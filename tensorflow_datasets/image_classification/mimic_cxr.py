@@ -75,7 +75,6 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
           "studyTime": tfds.features.Text(),
           "performedProcedureStepDescription": tfds.features.Text(),
           "procedureCodeSequence_CodeMeaning": tfds.features.Text(),
-          "patientOrientationCodeSequence_CodeMeaning": tfds.features.Text(),
           "label_chexpert": tfds.features.Sequence(
                 tfds.features.ClassLabel(names=_LABELS.values())),
           "label_negbio": tfds.features.Sequence(
@@ -88,6 +87,7 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
                                   encoding_format='png')),
           "viewPosition": tfds.features.Sequence(tfds.features.Text()),
           "viewCodeSequence_CodeMeaning":tfds.features.Sequence(tfds.features.Text()),
+          "patientOrientationCodeSequence_CodeMeaning": tfds.features.Sequence(tfds.features.Text()),
           "rows": tfds.features.Sequence(tfds.features.Tensor(shape=(), dtype=tf.int32)),
           "columns": tfds.features.Sequence(tfds.features.Tensor(shape=(), dtype=tf.int32)),
         }),
@@ -182,7 +182,6 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
           "studyTime": str(meta_df[meta_df.dicom_id == dcm_id[0]].StudyTime.values[0]),
           "performedProcedureStepDescription": meta_df[meta_df.dicom_id == dcm_id[0]].PerformedProcedureStepDescription.values[0],
           "procedureCodeSequence_CodeMeaning": meta_df[meta_df.dicom_id == dcm_id[0]].ProcedureCodeSequence_CodeMeaning.values[0],
-          "patientOrientationCodeSequence_CodeMeaning": meta_df[meta_df.dicom_id == dcm_id[0]].PatientOrientationCodeSequence_CodeMeaning.values[0],
           "label_chexpert": [_LABELS[chexpert_row[key].values[0]] for key in chexpert_label_keys],
           "label_negbio": [_LABELS[negbio_row[key].values[0]] for key in negbio_label_keys],
           # image related
@@ -190,6 +189,7 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
           "image": pixelData_list,
           "viewPosition": [meta_df[meta_df.dicom_id == idx].ViewPosition.values[0] for idx in dcm_id],
           "viewCodeSequence_CodeMeaning": [meta_df[meta_df.dicom_id == idx].ViewCodeSequence_CodeMeaning.values[0] for idx in dcm_id],
+          "patientOrientationCodeSequence_CodeMeaning": [meta_df[meta_df.dicom_id == idx].PatientOrientationCodeSequence_CodeMeaning.values[0] for idx in dcm_id],
           "rows": [meta_df[meta_df.dicom_id == idx].Rows.values[0] for idx in dcm_id],
           "columns": [meta_df[meta_df.dicom_id == idx].Columns.values[0] for idx in dcm_id],
         }
