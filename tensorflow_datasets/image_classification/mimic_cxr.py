@@ -4,14 +4,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+import io
+import numpy as np
+import os
 import tensorflow_datasets.public_api as tfds
 import tensorflow as tf
-import os
-import io
-import collections
-import pydicom
-from PIL import Image
-import numpy as np
 
 _CITATION = """
 @article{Johnson2019,
@@ -40,15 +38,16 @@ to a Research Use Agreement. To do so, please follow the instructions on the
 website, https://physionet.org/content/mimic-cxr/2.0.0/
 """
 
-# Labels per category
+
 _LABELS = collections.OrderedDict({
-    -1.0: "uncertain",
-    1.0: "positive",
-    0.0: "negative",
-    "": "unmentioned",
+  -1.0: "uncertain",
+  1.0: "positive",
+  0.0: "negative",
+  "": "unmentioned",
 })
 
-class MimicCxr(tfds.core.GeneratorBasedBuilder):
+
+class MimicCxr(tfds.core.BeamBasedBuilder):
   """mimic_cxr dataset."""
 
   VERSION = tfds.core.Version('0.1.0')
@@ -132,8 +131,9 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
         ),
     ]
 
-  def _generate_examples(self, path, split):
+  def _build_pcollection(self, pipeline, path, split):
     """Yields examples."""
+    beam = tfds.core.lazy_imports.apache_beam
     pd = tfds.core.lazy_imports.pandas
 
     # read three csv files
@@ -147,53 +147,84 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
       label_negbio_df = pd.read_csv(csv_f)
       label_negbio_df = label_negbio_df.fillna("")
 
+    chexpert_label_keys = list(label_chexpert_df.columns)[2:]
+    negbio_label_keys = list(label_negbio_df.columns)[2:]
 
-    # loop through each unique /p<subject-id>/s<study-id>
-    for k, v in split.items():
-      # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
-      if k.split(os.path.sep)[1] == 'p10': # test on a small portion of data
-        subject_id = k.split(os.path.sep)[2][1:]
-        study_id = k.split(os.path.sep)[3][1:]
-        dcm_id = v[0].split(',')
-        dcm_id = [idx.strip() for idx in dcm_id]
-        pixelData_list = []
-        for idx in dcm_id:
-          with tf.io.gfile.GFile(os.path.join(path, k, idx +'.dcm'), 'rb') as dcm:
-            image_bytes = dcm.read()
-            tmpFile = io.BytesIO(image_bytes)
-            image_array = pydicom.dcmread(tmpFile).pixel_array
-            image = Image.fromarray(image_array, 'I;16')
-            image = image.resize((2544, 3056), resample=Image.NEAREST)
-            tmpFile = io.BytesIO()
-            image.save(tmpFile, format='PNG')
-            tmpFile.seek(0)
-          pixelData_list.append(tmpFile)
 
-        chexpert_row = label_chexpert_df[(label_chexpert_df.subject_id == np.int64(subject_id)) & (label_chexpert_df.study_id == np.int64(study_id))]
-        negbio_row = label_negbio_df[(label_negbio_df.subject_id == np.int64(subject_id)) & (label_negbio_df.study_id == np.int64(study_id))]
-        chexpert_label_keys = list(label_chexpert_df.columns)[2:]
-        negbio_label_keys = list(label_negbio_df.columns)[2:]
+    def _extract_content(split, meta_df, label_chexpert_df, label_negbio_df):
 
-        record = {
-          "subject_id": subject_id,
-          # study related
-          "study_id": study_id,
-          "studyDate": str(meta_df[meta_df.dicom_id == dcm_id[0]].StudyDate.values[0]),
-          "studyTime": str(meta_df[meta_df.dicom_id == dcm_id[0]].StudyTime.values[0]),
-          "performedProcedureStepDescription": meta_df[meta_df.dicom_id == dcm_id[0]].PerformedProcedureStepDescription.values[0],
-          "procedureCodeSequence_CodeMeaning": meta_df[meta_df.dicom_id == dcm_id[0]].ProcedureCodeSequence_CodeMeaning.values[0],
-          "label_chexpert": [_LABELS[chexpert_row[key].values[0]] for key in chexpert_label_keys],
-          "label_negbio": [_LABELS[negbio_row[key].values[0]] for key in negbio_label_keys],
-          # image related
-          "dicom_id": dcm_id,
-          "image": pixelData_list,
-          "viewPosition": [meta_df[meta_df.dicom_id == idx].ViewPosition.values[0] for idx in dcm_id],
-          "viewCodeSequence_CodeMeaning": [meta_df[meta_df.dicom_id == idx].ViewCodeSequence_CodeMeaning.values[0] for idx in dcm_id],
-          "patientOrientationCodeSequence_CodeMeaning": [meta_df[meta_df.dicom_id == idx].PatientOrientationCodeSequence_CodeMeaning.values[0] for idx in dcm_id],
-          "rows": [meta_df[meta_df.dicom_id == idx].Rows.values[0] for idx in dcm_id],
-          "columns": [meta_df[meta_df.dicom_id == idx].Columns.values[0] for idx in dcm_id],
-        }
-        yield k, record
+      subject_idices = []
+      study_idices = []
+      dcm_idices = []
+      meta_rows = []
+      chexpert_rows = []
+      negbio_rows = []
+
+      # loop through each unique /p<subject-id>/s<study-id>
+      for k, v in split.items():
+        # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
+        if k.split(os.path.sep)[1] == 'p10': # test on a small portion of data
+          subject_id = k.split(os.path.sep)[2][1:]
+          study_id = k.split(os.path.sep)[3][1:]
+          dcm_id = [idx.strip() for idx in v[0].split(',')]
+          subject_idices.append(subject_id)
+          study_idices.append(study_id)
+          dcm_idices.append(dcm_id)
+
+          meta_rows.append([meta_df[meta_df.dicom_id == idx] for idx in dcm_id])
+          chexpert_rows.append(label_chexpert_df[(label_chexpert_df.subject_id == np.int64(subject_id)) & (label_chexpert_df.study_id == np.int64(study_id))])
+          negbio_rows.append(label_negbio_df[(label_negbio_df.subject_id == np.int64(subject_id)) & (label_negbio_df.study_id == np.int64(study_id))])
+
+      return list(zip(split.keys(), subject_idices, study_idices, dcm_idices, meta_rows, chexpert_rows, negbio_rows))
+
+
+    def _process_example(content):
+      Image = tfds.core.lazy_imports.PIL_Image
+      pydicom = tfds.core.lazy_imports.pydicom
+
+      k, subject_id, study_id, dcm_id, \
+      meta_row, chexpert_row, negbio_row, = content
+
+      pixelData_list = []
+      for idx in dcm_id:
+        with tf.io.gfile.GFile(os.path.join(path, k, idx +'.dcm'), 'rb') as dcm:
+          image_bytes = dcm.read()
+          tmpFile = io.BytesIO(image_bytes)
+          image_array = pydicom.dcmread(tmpFile).pixel_array
+          image = Image.fromarray(image_array, 'I;16')
+          image = image.resize((2544, 3056), resample=Image.NEAREST)
+          tmpFile = io.BytesIO()
+          image.save(tmpFile, format='PNG')
+          tmpFile.seek(0)
+        pixelData_list.append(tmpFile)
+
+      record = {
+        "subject_id": subject_id,
+        # study related
+        "study_id": study_id,
+        "studyDate": str(meta_row[0].StudyDate.values[0]),
+        "studyTime": str(meta_row[0].StudyTime.values[0]),
+        "performedProcedureStepDescription": meta_df[meta_df.dicom_id == dcm_id[0]].PerformedProcedureStepDescription.values[0],
+        "procedureCodeSequence_CodeMeaning": meta_df[meta_df.dicom_id == dcm_id[0]].ProcedureCodeSequence_CodeMeaning.values[0],
+        "label_chexpert": [_LABELS[chexpert_row[key].values[0]] for key in chexpert_label_keys],
+        "label_negbio": [_LABELS[negbio_row[key].values[0]] for key in negbio_label_keys],
+        # image related
+        "dicom_id": dcm_id,
+        "image": pixelData_list,
+        "viewPosition": [m.ViewPosition.values[0] for m in meta_row],
+        "viewCodeSequence_CodeMeaning": [m.ViewCodeSequence_CodeMeaning.values[0] for m in meta_row],
+        "patientOrientationCodeSequence_CodeMeaning": [m.PatientOrientationCodeSequence_CodeMeaning.values[0] for m in meta_row],
+        "rows": [m.Rows.values[0] for m in meta_row],
+        "columns": [m.Columns.values[0] for m in meta_row],
+      }
+      yield k, record
+
+
+    return (
+        pipeline
+        | beam.Create(_extract_content(split, meta_df, label_chexpert_df, label_negbio_df))
+        | beam.FlatMap(_process_example)
+    )
 
 
 def _split_csv_reader(split_csv_path):

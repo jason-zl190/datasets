@@ -112,6 +112,11 @@ class LazyImporter(object):
 
   @utils.classproperty
   @classmethod
+  def pydicom(cls):
+    return _try_import("pydicom")
+
+  @utils.classproperty
+  @classmethod
   def pydub(cls):
     return _try_import("pydub")
 
