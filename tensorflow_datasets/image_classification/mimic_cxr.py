@@ -153,7 +153,7 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
 
 
     def _extract_content(split, meta_df, label_chexpert_df, label_negbio_df):
-
+      keys = []
       subject_idices = []
       study_idices = []
       dcm_idices = []
@@ -165,6 +165,7 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
       for k, v in split.items():
         # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
         if k.split(os.path.sep)[1] == 'p10': # test on a small portion of data
+          keys.append(k)
           subject_id = k.split(os.path.sep)[2][1:]
           study_id = k.split(os.path.sep)[3][1:]
           dcm_id = [idx.strip() for idx in v[0].split(',')]
@@ -176,7 +177,7 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
           chexpert_rows.append(label_chexpert_df[(label_chexpert_df.subject_id == np.int64(subject_id)) & (label_chexpert_df.study_id == np.int64(study_id))])
           negbio_rows.append(label_negbio_df[(label_negbio_df.subject_id == np.int64(subject_id)) & (label_negbio_df.study_id == np.int64(study_id))])
 
-      return list(zip(split.keys(), subject_idices, study_idices, dcm_idices, meta_rows, chexpert_rows, negbio_rows))
+      return list(zip(keys, subject_idices, study_idices, dcm_idices, meta_rows, chexpert_rows, negbio_rows))
 
 
     def _process_example(content):
