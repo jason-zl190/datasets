@@ -73,6 +73,7 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
           "study_id": tfds.features.Text(),
           "studyDate": tfds.features.Text(),
           "studyTime": tfds.features.Text(),
+          "report": tfds.features.Text(),
           "performedProcedureStepDescription": tfds.features.Text(),
           "procedureCodeSequence_CodeMeaning": tfds.features.Text(),
           "label_chexpert": tfds.features.Sequence(
@@ -156,6 +157,10 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
         study_id = k.split(os.path.sep)[3][1:]
         dcm_id = v[0].split(',')
         dcm_id = [idx.strip() for idx in dcm_id]
+
+        with tf.io.gfile.GFile(os.path.join(path, k +'.txt'), 'r') as report:
+          report_text = report.read()
+
         pixelData_list = []
         for idx in dcm_id:
           with tf.io.gfile.GFile(os.path.join(path, k, idx +'.dcm'), 'rb') as dcm:
@@ -180,6 +185,7 @@ class MimicCxr(tfds.core.GeneratorBasedBuilder):
           "study_id": study_id,
           "studyDate": str(meta_df[meta_df.dicom_id == dcm_id[0]].StudyDate.values[0]),
           "studyTime": str(meta_df[meta_df.dicom_id == dcm_id[0]].StudyTime.values[0]),
+          "report": report_text,
           "performedProcedureStepDescription": meta_df[meta_df.dicom_id == dcm_id[0]].PerformedProcedureStepDescription.values[0],
           "procedureCodeSequence_CodeMeaning": meta_df[meta_df.dicom_id == dcm_id[0]].ProcedureCodeSequence_CodeMeaning.values[0],
           "label_chexpert": [_LABELS[chexpert_row[key].values[0]] for key in chexpert_label_keys],
