@@ -32,6 +32,7 @@ from tensorflow_datasets.image.duke_ultrasound import DukeUltrasound
 from tensorflow_datasets.image.flic import Flic
 from tensorflow_datasets.image.lost_and_found import LostAndFound
 from tensorflow_datasets.image.lsun import Lsun
+from tensorflow_datasets.image.nyu_depth_v2 import NyuDepthV2
 from tensorflow_datasets.image.scene_parse_150 import SceneParse150
 from tensorflow_datasets.image.shapes3d import Shapes3d
 from tensorflow_datasets.image.the300w_lp import The300wLp
@@ -65,7 +66,6 @@ from tensorflow_datasets.image_classification.flowers import TFFlowers
 from tensorflow_datasets.image_classification.food101 import Food101
 from tensorflow_datasets.image_classification.geirhos_conflict_stimuli import GeirhosConflictStimuli
 from tensorflow_datasets.image_classification.horses_or_humans import HorsesOrHumans
-from tensorflow_datasets.image_classification.image_folder import ImageLabelFolder
 from tensorflow_datasets.image_classification.imagenet import Imagenet2012
 from tensorflow_datasets.image_classification.imagenet2012_corrupted import Imagenet2012Corrupted
 from tensorflow_datasets.image_classification.imagenet2012_subset import Imagenet2012Subset
