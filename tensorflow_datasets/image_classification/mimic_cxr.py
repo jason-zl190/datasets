@@ -240,15 +240,19 @@ def _split_csv_reader(split_csv_path):
   with tf.io.gfile.GFile(split_csv_path) as csv_f:
     df = pd.read_csv(csv_f)
 
-    def concat(a): return ", ".join(a)  # rules for aggregation
-    df = df.groupby('study_id', as_index=False).aggregate({'subject_id': 'first', 'split': 'first', 'dicom_id': concat})
-    df['path'] = df.apply(lambda x: os.path.join("files", 
-                            "p" + str(x.subject_id)[0:2], 
-                            "p" + str(x.subject_id), 
-                            "s" + str(x.study_id)), axis=1)
+  def concat(a): return ", ".join(a)  # rules for aggregation
+  df = df.groupby('study_id', as_index=False).aggregate({'subject_id': 'first', 'split': 'first', 'dicom_id': concat})
+  df['path'] = df.apply(lambda x: os.path.join("files", 
+                          "p" + str(x.subject_id)[0:2], 
+                          "p" + str(x.subject_id), 
+                          "s" + str(x.study_id)), axis=1)
 
-    return {
-      'train': df[df.split=='train'][['path', 'dicom_id']].set_index('path').T.to_dict('list'),
-      'validation': df[df.split=='validate'][['path', 'dicom_id']].set_index('path').T.to_dict('list'),
-      'test': df[df.split=='test'][['path', 'dicom_id']].set_index('path').T.to_dict('list'),
-    }
+  train_df = df[df.split=='train'].sample(frac=0.001, random_state=42)
+  val_df = df[df.split=='validate'].sample(frac=0.01, random_state=42)
+  test_df = df[df.split=='test'].sample(frac=0.01, random_state=42)
+
+  return {
+    'train': train_df[['path', 'dicom_id']].set_index('path').T.to_dict('list'),
+    'validation': val_df[['path', 'dicom_id']].set_index('path').T.to_dict('list'),
+    'test': test_df[['path', 'dicom_id']].set_index('path').T.to_dict('list'),
+  }
