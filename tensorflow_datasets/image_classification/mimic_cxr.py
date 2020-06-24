@@ -152,32 +152,18 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
     negbio_label_keys = list(label_negbio_df.columns)[2:]
 
 
-    def _extract_content(split, meta_df, label_chexpert_df, label_negbio_df):
-      keys = []
-      subject_idices = []
-      study_idices = []
-      dcm_idices = []
-      meta_rows = []
-      chexpert_rows = []
-      negbio_rows = []
+    def _extract_content(element):
+      # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
+      k, v = element
+      subject_id = k.split(os.path.sep)[2][1:]
+      study_id = k.split(os.path.sep)[3][1:]
+      dcm_id = [idx.strip() for idx in v[0].split(',')]
 
-      # loop through each unique /p<subject-id>/s<study-id>
-      for k, v in split.items():
-        # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
-        if k.split(os.path.sep)[1] == 'p10': # test on a small portion of data
-          keys.append(k)
-          subject_id = k.split(os.path.sep)[2][1:]
-          study_id = k.split(os.path.sep)[3][1:]
-          dcm_id = [idx.strip() for idx in v[0].split(',')]
-          subject_idices.append(subject_id)
-          study_idices.append(study_id)
-          dcm_idices.append(dcm_id)
+      meta_row = [meta_df[meta_df.dicom_id == idx] for idx in dcm_id]
+      chexpert_row = label_chexpert_df[(label_chexpert_df.subject_id == np.int64(subject_id)) & (label_chexpert_df.study_id == np.int64(study_id))]
+      negbio_row = label_negbio_df[(label_negbio_df.subject_id == np.int64(subject_id)) & (label_negbio_df.study_id == np.int64(study_id))]
 
-          meta_rows.append([meta_df[meta_df.dicom_id == idx] for idx in dcm_id])
-          chexpert_rows.append(label_chexpert_df[(label_chexpert_df.subject_id == np.int64(subject_id)) & (label_chexpert_df.study_id == np.int64(study_id))])
-          negbio_rows.append(label_negbio_df[(label_negbio_df.subject_id == np.int64(subject_id)) & (label_negbio_df.study_id == np.int64(study_id))])
-
-      return list(zip(keys, subject_idices, study_idices, dcm_idices, meta_rows, chexpert_rows, negbio_rows))
+      return k, subject_id, study_id, dcm_id, meta_row, chexpert_row, negbio_row
 
 
     def _process_example(content):
@@ -225,10 +211,11 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
       }
       yield k, record
 
-
+    filtered_split = dict(filter(lambda elem: elem[0].split(os.path.sep)[1] == 'p10', split.items()))
     return (
         pipeline
-        | beam.Create(_extract_content(split, meta_df, label_chexpert_df, label_negbio_df))
+        | beam.Create(filtered_split.items())
+        | beam.Map(_extract_content)
         | beam.FlatMap(_process_example)
     )
 
@@ -247,9 +234,9 @@ def _split_csv_reader(split_csv_path):
                           "p" + str(x.subject_id), 
                           "s" + str(x.study_id)), axis=1)
 
-  train_df = df[df.split=='train'].sample(frac=0.001, random_state=42)
-  val_df = df[df.split=='validate'].sample(frac=0.01, random_state=42)
-  test_df = df[df.split=='test'].sample(frac=0.01, random_state=42)
+  train_df = df[df.split=='train'].sample(frac=1, random_state=42)
+  val_df = df[df.split=='validate'].sample(frac=1, random_state=42)
+  test_df = df[df.split=='test'].sample(frac=1, random_state=42)
 
   return {
     'train': train_df[['path', 'dicom_id']].set_index('path').T.to_dict('list'),
