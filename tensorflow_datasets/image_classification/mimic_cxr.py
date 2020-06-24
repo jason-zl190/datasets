@@ -137,24 +137,24 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
     beam = tfds.core.lazy_imports.apache_beam
     pd = tfds.core.lazy_imports.pandas
 
-    # read three csv files
-    with tf.io.gfile.GFile(os.path.join(path, 'mimic-cxr-2.0.0-metadata.csv')) as csv_f:
-      meta_df = pd.read_csv(csv_f)
-      meta_df = meta_df.fillna("")
-    with tf.io.gfile.GFile(os.path.join(path, 'mimic-cxr-2.0.0-chexpert.csv')) as csv_f:
-      label_chexpert_df = pd.read_csv(csv_f)
-      label_chexpert_df = label_chexpert_df.fillna("")
-    with tf.io.gfile.GFile(os.path.join(path, 'mimic-cxr-2.0.0-negbio.csv')) as csv_f:
-      label_negbio_df = pd.read_csv(csv_f)
-      label_negbio_df = label_negbio_df.fillna("")
-
-    chexpert_label_keys = list(label_chexpert_df.columns)[2:]
-    negbio_label_keys = list(label_negbio_df.columns)[2:]
-
-
     def _process_example(content):
       Image = tfds.core.lazy_imports.PIL_Image
       pydicom = tfds.core.lazy_imports.pydicom
+
+      # read three csv files
+      with tf.io.gfile.GFile(os.path.join(path, 'mimic-cxr-2.0.0-metadata.csv')) as csv_f:
+        meta_df = pd.read_csv(csv_f)
+        meta_df = meta_df.fillna("")
+      with tf.io.gfile.GFile(os.path.join(path, 'mimic-cxr-2.0.0-chexpert.csv')) as csv_f:
+        label_chexpert_df = pd.read_csv(csv_f)
+        label_chexpert_df = label_chexpert_df.fillna("")
+      with tf.io.gfile.GFile(os.path.join(path, 'mimic-cxr-2.0.0-negbio.csv')) as csv_f:
+        label_negbio_df = pd.read_csv(csv_f)
+        label_negbio_df = label_negbio_df.fillna("")
+
+      chexpert_label_keys = list(label_chexpert_df.columns)[2:]
+      negbio_label_keys = list(label_negbio_df.columns)[2:]
+
 
       # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
       k, v = content
