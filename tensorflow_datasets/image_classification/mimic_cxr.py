@@ -152,9 +152,12 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
     negbio_label_keys = list(label_negbio_df.columns)[2:]
 
 
-    def _extract_content(element):
+    def _process_example(content):
+      Image = tfds.core.lazy_imports.PIL_Image
+      pydicom = tfds.core.lazy_imports.pydicom
+
       # k: files/p<subject-id>[0:3]/p<subject-id>/s<study-id>, v: "dicom-id, ..."
-      k, v = element
+      k, v = content
       subject_id = k.split(os.path.sep)[2][1:]
       study_id = k.split(os.path.sep)[3][1:]
       dcm_id = [idx.strip() for idx in v[0].split(',')]
@@ -162,16 +165,6 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
       meta_row = [meta_df[meta_df.dicom_id == idx] for idx in dcm_id]
       chexpert_row = label_chexpert_df[(label_chexpert_df.subject_id == np.int64(subject_id)) & (label_chexpert_df.study_id == np.int64(study_id))]
       negbio_row = label_negbio_df[(label_negbio_df.subject_id == np.int64(subject_id)) & (label_negbio_df.study_id == np.int64(study_id))]
-
-      return k, subject_id, study_id, dcm_id, meta_row, chexpert_row, negbio_row
-
-
-    def _process_example(content):
-      Image = tfds.core.lazy_imports.PIL_Image
-      pydicom = tfds.core.lazy_imports.pydicom
-
-      k, subject_id, study_id, dcm_id, \
-      meta_row, chexpert_row, negbio_row, = content
 
       with tf.io.gfile.GFile(os.path.join(path, k +'.txt'), 'r') as report:
         report_text = report.read()
@@ -215,7 +208,6 @@ class MimicCxr(tfds.core.BeamBasedBuilder):
     return (
         pipeline
         | beam.Create(filtered_split.items())
-        | beam.Map(_extract_content)
         | beam.FlatMap(_process_example)
     )
 
