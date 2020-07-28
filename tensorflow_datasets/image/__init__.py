@@ -103,3 +103,4 @@ from tensorflow_datasets.image_classification.vgg_face2 import VggFace2
 from tensorflow_datasets.image_classification.visual_domain_decathlon import VisualDomainDecathlon
 from tensorflow_datasets.image.montgomery_xray import MontgomeryXray  # TODO(montgomery_xray) Sort alphabetically
 from tensorflow_datasets.image.jsrt import Jsrt  # TODO(jsrt) Sort alphabetically
+from tensorflow_datasets.image.mimiciii_cxr import MimiciiiCxr  # TODO(mimiciii_cxr) Sort alphabetically

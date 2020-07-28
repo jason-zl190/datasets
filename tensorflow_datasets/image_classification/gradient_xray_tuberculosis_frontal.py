@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 import pydicom
 from PIL import Image
-import gh_crypt
+# import gh_crypt
 
 # TODO(gradient_xray_tuberculosis_frontal): BibTeX citation
 _CITATION = """
@@ -77,24 +77,26 @@ class GradientXrayTuberculosisFrontal(tfds.core.GeneratorBasedBuilder):
   def _generate_examples(self, df):
     """Yields examples."""
 
-    for idx, row in df.iterrows():    
-      path =tf.constant('oss://ai-dicom\x01id={access_key}\x02key={secret_key}\x02host=oss-cn-hangzhou-internal.aliyuncs.com/{path}'.format(
-                  bucket='ai-dicom',
-                  path='data/encrypted_dicoms/' + row.path,
-                  access_key=os.environ.get("OSS_ACCESS_KEY"),
-                  secret_key=os.environ.get("OSS_SECRET_KEY")
-              ))
+    raise AssertionError('To use this dataset, a valid `data_dir` should be provided')
 
-      image_bytes = gh_crypt.decrypt_bytes(
-        contents=tf.io.read_file(path),
-        chunk_size=64*1024, 
-        key_hex=os.environ['DECRYPT_KEY'])
+    # for idx, row in df.iterrows():    
+    #   path =tf.constant('oss://ai-dicom\x01id={access_key}\x02key={secret_key}\x02host=oss-cn-hangzhou-internal.aliyuncs.com/{path}'.format(
+    #               bucket='ai-dicom',
+    #               path='data/encrypted_dicoms/' + row.path,
+    #               access_key=os.environ.get("OSS_ACCESS_KEY"),
+    #               secret_key=os.environ.get("OSS_SECRET_KEY")
+    #           ))
+
+      # image_bytes = gh_crypt.decrypt_bytes(
+      #   contents=tf.io.read_file(path),
+      #   chunk_size=64*1024, 
+      #   key_hex=os.environ['DECRYPT_KEY'])
       
-      image_tensor = tfio.image.decode_dicom_image(image_bytes)
-      image_tensor = tf.cast(tf.round(tf.image.resize_with_pad(image_tensor[0], 512, 512)), tf.uint16)
+      # image_tensor = tfio.image.decode_dicom_image(image_bytes)
+      # image_tensor = tf.cast(tf.round(tf.image.resize_with_pad(image_tensor[0], 512, 512)), tf.uint16)
 
-      record = {
-        "image/name": row.path,
-        "image": image_tensor.numpy(),
-      }
-      yield idx, record
+      # record = {
+      #   "image/name": row.path,
+      #   "image": image_tensor.numpy(),
+      # }
+      # yield idx, record
