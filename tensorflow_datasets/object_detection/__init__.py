@@ -23,3 +23,4 @@ from tensorflow_datasets.object_detection.open_images_challenge2019 import OpenI
 from tensorflow_datasets.object_detection.voc import Voc
 from tensorflow_datasets.object_detection.waymo_open_dataset import WaymoOpenDataset
 from tensorflow_datasets.object_detection.wider_face import WiderFace
+from tensorflow_datasets.object_detection.nih_deeplesion import NihDeeplesion  # TODO(nih_deeplesion) Sort alphabetically
