@@ -44,7 +44,11 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
         # tfds.features.FeatureConnectors
         features=tfds.features.FeaturesDict({
             # These are the features of your dataset like images, labels ...
-            "image": tfds.features.Image(),
+            "image": tfds.features.Image(shape=(None, None, 1),
+                              dtype=tf.uint16,
+                              encoding_format='png'),
+            "window_center": tfds.features.Tensor(shape=(), dtype=tf.float32),
+            "window_width": tfds.features.Tensor(shape=(), dtype=tf.float32),
             "image/filename": tfds.features.Text(),
             "objects": tfds.features.Sequence({
                 "label": tfds.features.ClassLabel(names=LESION_LABELS),
@@ -102,6 +106,8 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
       # build example
       record = {
           "image": os.path.join(data_path, image_path),
+          "window_center": window_center,
+          "window_width": window_width,
           "image/filename": image_path,
           "objects": objects,
           "labels": sorted(set(obj["label"] for obj in objects)),
@@ -154,13 +160,13 @@ class AnnParser():
               'window width', 'rows', 'columns', 'manufacturer',
               'lesion type', 'bounding box', 'Split_Num',
               ]]
-    def format_win_level(s):
-      win_level = [int(a) for a in s.strip('[]').split(', ')]
-      if len(win_level) > 1:
-          win_level = np.median(win_level) * 0.985
+    def format_win_center(s):
+      win_center = [int(a) for a in s.strip('[]').split(', ')]
+      if len(win_center) > 1:
+          win_center = np.median(win_center) * 0.985
       else:
-          win_level = win_level[0]
-      return win_level
+          win_center = win_center[0]
+      return win_center
 
     def format_win_width(s):
         win_width = [int(a) for a in s.strip('[]').split(', ')]
@@ -181,7 +187,7 @@ class AnnParser():
 
     df_t = df_t[df_t['manufacturer'] == 'GE MEDICAL SYSTEMS']
     df_t['full path'] = df_t['full path'].apply(lambda x: '/'.join(x.split('/')[1:]))
-    df_t['window center'] = df_t['window center'].apply(format_win_level)
+    df_t['window center'] = df_t['window center'].apply(format_win_center)
     df_t['window width'] = df_t['window width'].apply(format_win_width)
     df_t = df_t[(df_t['lesion type'] != '[10000]')&(df_t['lesion type'] != '[10000, 10000]')]
     df_t['lesion type'] = df_t['lesion type'].apply(lambda x: [LESION_TYPES[a] for a in x.strip('[]').split(', ')])
