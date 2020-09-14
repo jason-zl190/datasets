@@ -16,7 +16,7 @@ _DESCRIPTION = """
 """
 
 #LESION_LABELS = ("mass_calc", 'calc', 'mass', 'ad', 'asym', 'lymph')
-LESION_LABELS = ('mass')
+LESION_LABELS = ['mass']
 LESION_TYPES = {
   '11000':'mass',#'mass_calc',
   '10000':'calc',
@@ -101,6 +101,9 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
         ymin, xmin = min(Ay, By), min(Ax, Bx)
         ymax, xmax = max(Ay, By), max(Ax, Bx)
         return ymin / height, xmin / width, ymax / height, xmax / width 
+      
+      # if 'calc' in lesion_type or ('calc' == lesion_type):
+      #   print("{},{}".format(image_path, lesion_type))
       objects = [{"label": x[0], 
                   "bbox": tfds.features.BBox(*format_bbox(x[1], int(rows), int(columns)))
                   } for x in zip(lesion_type, bounding_box)] 
@@ -190,9 +193,10 @@ class AnnParser():
     df_t['full path'] = df_t['full path'].apply(lambda x: '/'.join(x.split('/')[1:]))
     df_t['window center'] = df_t['window center'].apply(format_win_center)
     df_t['window width'] = df_t['window width'].apply(format_win_width)
-    df_t = df_t[(df_t['lesion type'] != '[10000]')&(df_t['lesion type'] != '[10000, 10000]')]
+    df_t = df_t[(df_t['lesion type'] != '[10000]') & (df_t['lesion type'] != '[10000, 10000]') & (df_t['lesion type'] != '[10000, 10000, 10000]')]
     df_t['lesion type'] = df_t['lesion type'].apply(lambda x: [LESION_TYPES[a] for a in x.strip('[]').split(', ')])
-    df_t['idx_2rm'] = df_t['lesion type'].apply(lambda x: [i for i,a in enumerate(x) if a=='calc'])
+    df_t['idx_2rm'] = df_t['lesion type'].apply(lambda x: [i for i, a in enumerate(x) if a=='calc'])
+    df_t['lesion type'] = df_t.apply(lambda x: remove_element(x, 'lesion type'), axis=1)
     df_t['bounding box'] = df_t['bounding box'].apply(lambda x: ast.literal_eval(x))
     #df_t = df_t[df_t['idx_2rm'].map(lambda x: len(x) >= 1) ]
     df_t['bounding box'] = df_t.apply(lambda x: remove_element(x, 'bounding box'), axis=1)
