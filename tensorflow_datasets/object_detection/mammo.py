@@ -15,7 +15,8 @@ _CITATION = """
 _DESCRIPTION = """
 """
 
-LESION_LABELS = ("mass_calc", 'calc', 'mass', 'ad', 'asym', 'lymph')
+#LESION_LABELS = ("mass_calc", 'calc', 'mass', 'ad', 'asym', 'lymph')
+LESION_LABELS = ('mass')
 LESION_TYPES = {
   '11000':'mass',#'mass_calc',
   '10000':'calc',
