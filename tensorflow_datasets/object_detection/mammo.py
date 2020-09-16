@@ -48,6 +48,8 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
             "image": tfds.features.Image(shape=(None, None, 1),
                               dtype=tf.uint16,
                               encoding_format='png'),
+            "rows": tfds.features.Tensor(shape=(), dtype=tf.int32),
+            "cols": tfds.features.Tensor(shape=(), dtype=tf.int32),
             "window_center": tfds.features.Tensor(shape=(), dtype=tf.float32),
             "window_width": tfds.features.Tensor(shape=(), dtype=tf.float32),
             "image/filename": tfds.features.Text(),
@@ -110,6 +112,8 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
       # build example
       record = {
           "image": os.path.join(data_path, image_path),
+          "rows": int(rows),
+          "cols": int(columns),
           "window_center": window_center,
           "window_width": window_width,
           "image/filename": image_path,
