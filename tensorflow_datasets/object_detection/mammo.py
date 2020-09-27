@@ -54,7 +54,7 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
             "window_width": tfds.features.Tensor(shape=(), dtype=tf.float32),
             "image/filename": tfds.features.Text(),
             "objects": tfds.features.Sequence({
-                "label": tfds.features.ClassLabel(names=LESION_LABELS),
+                "label": tfds.features.Tensor(shape=(), dtype=tf.int32), # tfds.features.ClassLabel(names=LESION_LABELS),
                 "bbox": tfds.features.BBoxFeature(),
             }),
             "labels": tfds.features.Sequence(
@@ -106,7 +106,7 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
       
       # if 'calc' in lesion_type or ('calc' == lesion_type):
       #   print("{},{}".format(image_path, lesion_type))
-      objects = [{"label": x[0], 
+      objects = [{"label": 1, #x[0], 
                   "bbox": tfds.features.BBox(*format_bbox(x[1], int(rows), int(columns)))
                   } for x in zip(lesion_type, bounding_box)] 
       # build example
@@ -118,7 +118,7 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
           "window_width": window_width,
           "image/filename": image_path,
           "objects": objects,
-          "labels": sorted(set(obj["label"] for obj in objects)),
+          "labels": ['mass'] #sorted(set(obj["label"] for obj in objects)),
       }
       yield idx, record
 
