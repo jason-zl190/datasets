@@ -26,6 +26,9 @@ LESION_TYPES = {
   '00001':'mass',#'lymph',
 }
 
+CLASS_LABELS = ("Benign", "Malignant")
+RESULT_LABELS = ("TP", "FP", "TN", "FN")
+
 CSV_PATH = os.path.join("..", "mass_calc_refined_positive.csv")
 
 class Mammo(tfds.core.GeneratorBasedBuilder):
@@ -59,6 +62,8 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
             }),
             "labels": tfds.features.Sequence(
                 tfds.features.ClassLabel(names=LESION_LABELS)),
+            "class": tfds.features.ClassLabel(names=CLASS_LABELS),
+            "result": tfds.features.ClassLabel(names=RESULT_LABELS),
         }),
 
         # Homepage of the dataset for documentation
@@ -96,7 +101,7 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
       # collect annotations
       fake_id, image_path, window_center, window_width, \
       rows, columns, manufacturer, \
-      lesion_type, bounding_box, Split_Num = value
+      lesion_type, bounding_box, Split_Num, class_label, result_label = value
 
       def format_bbox(bbox, height, width):
         Ax, Ay, Bx, By = bbox
@@ -119,6 +124,8 @@ class Mammo(tfds.core.GeneratorBasedBuilder):
           "image/filename": image_path,
           "objects": objects,
           "labels": sorted(set(obj["label"] for obj in objects)),
+          "class": class_label,
+          "result": result_label,
       }
       yield idx, record
 
@@ -166,7 +173,7 @@ class AnnParser():
     # select columns
     df_t = df[['fake id', 'full path', 'window center',
               'window width', 'rows', 'columns', 'manufacturer',
-              'lesion type', 'bounding box', 'Split_Num',
+              'lesion type', 'bounding box', 'Split_Num', "Class", "Result"
               ]]
     def format_win_center(s):
       win_center = [int(a) for a in s.strip('[]').split(', ')]
@@ -205,6 +212,7 @@ class AnnParser():
     #df_t = df_t[df_t['idx_2rm'].map(lambda x: len(x) >= 1) ]
     df_t['bounding box'] = df_t.apply(lambda x: remove_element(x, 'bounding box'), axis=1)
     df_t = df_t.drop('idx_2rm', axis=1)
+    df_t['Class'] = df_t['Class'].replace('HR benign', 'Benign')
     # split
     return {'train': df_t[df_t['Split_Num'] < 0.7],
             'validation': df_t[df_t['Split_Num'] >=0.7],
