@@ -27,7 +27,7 @@ LESION_TYPES = {
 }
 
 CLASS_LABELS = ("Benign", "Malignant")
-RESULT_LABELS = ("TP", "FP", "TN", "FN")
+RESULT_LABELS = ("TP", "FP")
 
 CSV_PATH = os.path.join("..", "mass_calc_refined_positive.csv")
 
@@ -213,6 +213,8 @@ class AnnParser():
     df_t['bounding box'] = df_t.apply(lambda x: remove_element(x, 'bounding box'), axis=1)
     df_t = df_t.drop('idx_2rm', axis=1)
     df_t['Class'] = df_t['Class'].replace('HR benign', 'Benign')
+    df_t['Result'] = df_t['Result'].replace('TN', 'FP')
+    df_t['Result'] = df_t['Result'].replace('FN', 'TP')
     # split
     return {'train': df_t[df_t['Split_Num'] < 0.7],
             'validation': df_t[df_t['Split_Num'] >=0.7],
