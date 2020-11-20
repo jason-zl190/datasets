@@ -29,7 +29,7 @@ LESION_TYPES = {
 CLASS_LABELS = ("Benign", "Malignant")
 RESULT_LABELS = ("TP", "FP")
 
-CSV_PATH = os.path.join("..", "mass_calc_refined_positive.csv")
+CSV_PATH = os.path.join("..", "positive_lars_mass_refined.csv")
 
 class Mammo(tfds.core.GeneratorBasedBuilder):
   """TODO(mammo): Short description of my dataset."""
